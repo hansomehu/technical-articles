@@ -189,9 +189,13 @@ PUT /indice_name/_mapping
 
 #### Java API操作
 
-两个核心的maven包：`elasticsearch` 和 `elasticsearch-rest-high-level-client`  注意版本的匹配问题
+当前的Java API推荐使用下面的新Client，但是也不排除仍然有很多公司在使用HighRestClientAPI
 
-细节看代码
+https://www.elastic.co/guide/en/elasticsearch/client/java-api-client/current/introduction.html
+
+
+
+
 
 
 
@@ -358,8 +362,7 @@ sysctl -p
 
 **consistency**
 
-即一致性。在默认设置下，即使仅仅是在试图执行一个写操作之前，主分片都会要求必须要有规定数量quorum（或者换种说法，也即必须要有大多数）的分片副本处于活跃可用状态，才会去执行写操作（其中分片副本 可以是主分片或者副本分片）。这是为了避免在发生网络分区故障（network partition）的时候进行写操作，进而导致数据不一致。 规定数量即： int((primary + number_of_replicas) / 2 ) + 1
-consistency 参数的值可以设为：
+即一致性。在默认设置下，即使仅仅是在试图执行一个写操作之前，主分片都会要求必须要有规定数量quorum（或者换种说法，也即必须要有大多数）的分片副本处于活跃可用状态，才会去执行写操作（其中分片副本 可以是主分片或者副本分片）。这是为了避免在发生网络分区故障（network partition）的时候进行写操作，进而导致数据不一致。 规定数量即： int((primary + number_of_replicas) / 2 ) + 1 consistency 参数的值可以设为：
 
 - one ：只要主分片状态 ok 就允许执行写操作。
 
@@ -436,6 +439,8 @@ consistency 参数的值可以设为：
 **写入延时发生示意图**
 
 <img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20220518152526135.png" alt="image-20220518152526135" style="zoom:33%;" />
+
+
 
 **索引从生成到落盘起效的流程**
 
@@ -538,6 +543,8 @@ POST /indice_name/id?if_seq_no=1&if_primary_term=1
 
 ![img](https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/ac57f80fd140be932ba93bc887196ff0.png)
 
+
+
 **增量同步**
 
 如何同步？（能同步binlog就行，下面是一些常见的开源/商业化方案）
@@ -592,7 +599,7 @@ input {
       schedule => "* * * * *"
       #是否记录上次执行结果, 如果为true,将会把上次执行到的 tracking_column 字段的值记录下来,保存到 last_run_metadata_path 指定的文件中
       record_last_run => true
- 
+
       #是否需要记录某个column 的值,如果 record_last_run 为true,可以自定义我们需要 track 的 column 名称，此时该参数就要为 true. 否则默认 track 的是 timestamp 的值.
       use_column_value => true
  
@@ -642,13 +649,76 @@ output {
         codec => json_lines
   }
  }
-    
 }
 ```
 
 在mysql目录中下载mysql-connector-java-version.jar用于连接mysql数据库
 
 最后`./bin/logstash`启动即可
+
+
+
+#### Java语言检索高亮
+
+```java
+@Service
+public class ContentService {
+
+    @Autowired
+    private RestHighLevelClient restHighLevelClient;
+    
+    //实现搜索功能
+    public List<Map<String, Object>> searchHighlightPage(String keyword, int page, int size) throws IOException {
+        if (page <= 1) {
+            page = 1;
+        }
+        //创建搜索请求
+        SearchRequest searchRequest = new SearchRequest("索引名");
+        //构造搜索参数
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+		//设置需要精确查询的字段
+        TermQueryBuilder termQueryBuilder = QueryBuilders.termQuery("filed", keyword);
+        searchSourceBuilder.query(termQueryBuilder);
+        searchSourceBuilder.from((page - 1) * size);
+        searchSourceBuilder.size(size);
+        searchSourceBuilder.timeout(new TimeValue(60, TimeUnit.SECONDS));
+        //高亮
+        HighlightBuilder highlightBuilder = new HighlightBuilder();
+        //设置高亮字段
+        highlightBuilder.field("filed");
+        //如果要多个字段高亮,这项要为false
+        highlightBuilder.requireFieldMatch(true);
+        highlightBuilder.preTags("<span style='color:red'>");
+        highlightBuilder.postTags("</span>");
+        
+		//下面这两项,如果你要高亮如文字内容等有很多字的字段,必须配置,不然会导致高亮不全,文章内容缺失等   
+		highlightBuilder.fragmentSize(800000); //最大高亮分片数
+   		highlightBuilder.numOfFragments(0); //从第一个分片获取高亮片段
+        searchSourceBuilder.highlighter(highlightBuilder);
+
+        searchRequest.source(searchSourceBuilder);
+        SearchResponse response = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (SearchHit hit : response.getHits().getHits()) {
+            Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+            //解析高亮字段
+            Map<String, HighlightField> highlightFields = hit.getHighlightFields();
+            HighlightField field= highlightFields.get("field");
+            if(field!= null){
+                Text[] fragments = field.fragments();
+                String n_field = "";
+                for (Text fragment : fragments) {
+                    n_field += fragment;
+                }
+                //高亮标题覆盖原标题
+                sourceAsMap.put("field",n_field);
+            }
+            list.add(hit.getSourceAsMap());
+        }
+        return list;
+    }
+}
+```
 
 
 

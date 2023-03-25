@@ -193,6 +193,8 @@ ThreadLocal是一个将在多线程中为每一个线程创建单独的变量副
 
 
 
+##### TLM ——ThreadLocal的管理器
+
 Thread类维护了一个**ThreadLocalMap**的数据结构，它的key为当前线程对象，value为存储的数据对象。这个Map具备如下一些特性：
 
 - 它没有实现Map接口
@@ -280,6 +282,16 @@ public class ThreadLocalTest implements Runnable{
 **内存泄露问题，**首先ThreadLocal是**WeakReference**，只有在GC的时候才会消除
 
 其次，在使用线程池来启动线程，它不会自动销毁掉线程，这会导致该部分的引用不会回收
+
+所以，为了安全地使用ThreadLocal，必须要像每次使用完锁就解锁一样，在每次使用完ThreadLocal后都要调用remove()来清理无用的Entry
+
+
+
+##### InheritableThreadLocal
+
+通过这个类定义的数据可以被子线程所共享
+
+
 
 
 
@@ -426,10 +438,13 @@ runWorker：任务的具体执行；继承了AQS类，可以方便的实现工�
 
 线程池不允许使用Executors去创建，而是**通过ThreadPoolExecutor**的方式，这样的处理方式让写的同学更加明确线程池的运行规则，规避资源耗尽的风险。 说明：Executors各个方法的弊端：
 
-- new FixedThreadPool和new SingleThreadExecutor:  主要问题是堆积的请求处理队列可能会耗费非常大的内存，甚至**OOM**。 此外，newFixedThreadPool线程池的线程数量达corePoolSize后，即使线程池没有可执行任务时，也**不会释放线程**。
-- new CachedThreadPool和new ScheduledThreadPool:  主要问题是线程数最大数是Integer.MAX_VALUE，可能会创建数量非常多的线程，甚至**OOM**。
+- new FixedThreadPool和new SingleThreadExecutor:  主要问题是堆积的请求处理队列可能会耗费非常大的内存，甚至**OOM**。 此外，newFixedThreadPool线程池的线程数量达corePoolSize后，即使线程池没有可执行任务时，也**不会释放线程**
+- new CachedThreadPool和new ScheduledThreadPool:  主要问题是线程数最大数是Integer.MAX_VALUE，可能会创建数量非常多的线程，甚至**OOM**
+- 在阻塞队列方面，它的队列是没设置大小的，容易导致**OOM**
 
-总得来说就是对资源的操作粒度不够细
+
+
+
 
 ##### **ScheduledThreadPoolExecutor**
 
@@ -1043,7 +1058,11 @@ public class DCLSingleton {
 
 
 
+volatile的正确使用场景应该是，如果对一个对象的的改操作不在乎它的当前值的话
 
+其次，volatile变量不应该存在于其他变量的等式当中
+
+volatile最适合来做全局唯一的标记为，很好地发挥其可见性的特质，同时也避免了它在原子性上面的缺乏
 
 
 

@@ -426,6 +426,63 @@ public class DynamicProxy {
 
 
 
+#### Consumer / Supplier
+
+Consumer类就是一个处理容器，相当于是传入一个随意类型的参数，之后在其accept方法中去做对应的处理
+
+```java
+@FunctionalInterface
+public interface Consumer<T> {
+
+    /**
+     * Performs this operation on the given argument.
+     *
+     * @param t the input argument
+     */
+    void accept(T t);
+
+    /**
+     * Returns a composed {@code Consumer} that performs, in sequence, this
+     * operation followed by the {@code after} operation. If performing either
+     * operation throws an exception, it is relayed to the caller of the
+     * composed operation.  If performing this operation throws an exception,
+     * the {@code after} operation will not be performed.
+     *
+     * @param after the operation to perform after this operation
+     * @return a composed {@code Consumer} that performs in sequence this
+     * operation followed by the {@code after} operation
+     * @throws NullPointerException if {@code after} is null
+     */
+    default Consumer<T> andThen(Consumer<? super T> after) {
+        Objects.requireNonNull(after);
+        return (T t) -> { accept(t); after.accept(t); };
+    }
+}
+```
+
+
+
+Supplier这是一个存放容器，它可以放 任何类型的对象，之后在需要的的时候通过get方法取出即可。这就像是增强版的泛型机制了
+
+```java
+@FunctionalInterface
+public interface Supplier<T> {
+
+    /**
+     * Gets a result.
+     *
+     * @return a result
+     */
+    T get();
+}
+```
+
+
+
+
+
+
+
 #### **ThreadLocal**
 
 tl是一种无同步方案类型的线程安全机制，核心是在每个线程中保存一个**本地内存**，这个内存只能由该线程来操作，通过这种方式避免了线程不安全事件的发生。ThreadLocal会为每个线程创建单独的变量副本, 避免因多线程操作共享变量而导致的数据不一致的情况。
@@ -752,7 +809,7 @@ public static void main(String[] args) {
 
 **连接**：
 
-将java累的二进制代码合并到JVM的运行状态中
+将java类的二进制代码合并到JVM的运行状态中
     验证：确保加载的类信息符合JVM规范
     准备：正式为类变量分配内存并设置初始值（初始化static变量），这些内存都在方法区中分配
     解析：JVM常量池的符号引用替换为直接引用

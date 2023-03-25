@@ -320,11 +320,11 @@ netstat -nlp | grep port-id		查看网络端口号占用情况
 
 
 
-#### # 常用命令
+#### 问题排查步骤
 
 ##### 使用top查看系统的负载
 
-不仅仅需要查看每个进程占用情况，也需要在综合栏上看系统总体负载和每个CPU的负载
+不仅仅需要查看每个进程占用情况，也需要在综合栏上看系统总体负载和每个CPU的负载，快速定位一下系统资源的消耗情况
 
 uptime快速查看系统的overall负载
 
@@ -334,7 +334,7 @@ load average平均超过了60%说明系统的负载较高
 
 
 
-##### vmstat查看系统资源占用情况内存、CPU
+##### vmstat查看CPU资源占用情况
 
 r - running
 
@@ -352,7 +352,7 @@ us + sy 大于80%说明系统的负载较高
 
 
 
-##### mpstat -P ALL 2查看详细的CPU使用情况
+##### mpstat -P ALL 2 查看机器上的全部CPU的使用情况（只有消耗而没有具体的进程信息）
 
 
 
@@ -360,7 +360,11 @@ us + sy 大于80%说明系统的负载较高
 
 根据pid查看具体进程的CPU占用情况
 
-ps -ef | grep java
+
+
+##### ps -ef | grep java
+
+详细输出java相关进程的相关信息 -ef可以理解为详细信息；这一步的意义通常是为了定位到具体的问题线程
 
 
 
@@ -368,9 +372,11 @@ ps -ef | grep java
 
 参数是统计的单位，MB最为推荐，精细地刚刚好
 
-free -m pidstat -p [pid] -r [sampling interval] 查看具体线程的内存占用情况
 
 
+##### pidstat -p [pid] -r [sampling interval] 
+
+查看具体线程的内存占用情况
 
 
 
@@ -390,10 +396,108 @@ free -m pidstat -p [pid] -r [sampling interval] 查看具体线程的内存占�
 
 
 
-##### 定位生产问题的步骤（性能相关的问题）
+#### 定位生产问题的步骤（性能相关的问题）
+
+根据上面的一番检查后我们大致能知道是什么进程的什么线程导致了系统过大的负载
+
+这个时候在Java领域当中我们应该启用jstack来对具体的线程进行一个分析
+
+**jstack [pid] | grep "tid"** 这行命令会输出分析看看这个Java进程里哪个线程过载
+
+最好是 jstack [pid] >> xxx.log 输出到日志文件中去分析
+
+##### 
 
 <img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230223120249175.png" alt="image-20230223120249175" style="zoom: 25%;" />
 
 
 
 <img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230223120358219.png" alt="image-20230223120358219" style="zoom:25%;" />
+
+这是一个jstack的案例
+
+```shell
+Found one Java-level deadlock:
+
+"Thread-1":
+waiting to lock monitor 0x00007f0134003ae8 (object 0x00000007d6aa2c98, a java.lang.Object),
+which is held by "Thread-0""Thread-0":
+waiting to lock monitor 0x00007f0134006168 (object 0x00000007d6aa2ca8, a java.lang.Object),
+which is held by "Thread-1"
+
+Java stack information for the threads listed above:
+===================================================
+"Thread-1":
+at javaCommand.DeadLockclass.run(JStackDemo.java:40)
+- waiting to lock <0x00000007d6aa2c98> (a java.lang.Object)
+- locked <0x00000007d6aa2ca8> (a java.lang.Object)
+at java.lang.Thread.run(Thread.java:745)
+"Thread-0":
+at javaCommand.DeadLockclass.run(JStackDemo.java:27)
+- waiting to lock <0x00000007d6aa2ca8> (a java.lang.Object)
+- locked <0x00000007d6aa2c98> (a java.lang.Object)
+at java.lang.Thread.run(Thread.java:745)
+```
+
+
+
+GC方面的问题分析，一般都是参数开启GCPrintDetails，然后把文件dump到log文件中
+
+之后将日志文件使用类似GCViewer等工具进行可视化分析，重点来看GC的频率
+
+```shell
+-XX:+PrintGC 
+
+-XX:+PrintGCDetails 
+
+-Xloggc:gc.log 
+
+#### 具体GC文件的例子
+[GC (CMS Initial Mark) [1 CMS-initial-mark: 19498K(32768K)] 36184K(62272K), 0.0018083 secs] [Times: user=0.01 sys=0.00, real=0.01 secs] 
+[CMS-concurrent-mark-start]
+[CMS-concurrent-mark: 0.011/0.011 secs] [Times: user=0.02 sys=0.00, real=0.00 secs] 
+[CMS-concurrent-preclean-start]
+[CMS-concurrent-preclean: 0.001/0.001 secs] [Times: user=0.00 sys=0.00, real=0.01 secs] 
+[CMS-concurrent-abortable-preclean-start]
+ CMS: abort preclean due to time [CMS-concurrent-abortable-preclean: 0.558/5.093 secs] [Times: user=0.57 sys=0.00, real=5.09 secs] 
+[GC (CMS Final Remark) [YG occupancy: 16817 K (29504 K)][Rescan (parallel) , 0.0021918 secs][weak refs processing, 0.0000245 secs][class unloading, 0.0044098 secs][scrub symbol table, 0.0029752 secs][scrub string table, 0.0006820 secs][1 CMS-remark: 19498K(32768K)] 36316K(62272K), 0.0104997 secs] [Times: user=0.02 sys=0.00, real=0.01 secs] 
+[CMS-concurrent-sweep-start]
+[CMS-concurrent-sweep: 0.007/0.007 secs] [Times: user=0.01 sys=0.00, real=0.01 secs] 
+[CMS-concurrent-reset-start]
+[CMS-concurrent-reset: 0.000/0.000 secs] [Times: user=0.00 sys=0.00, real=0.00 secs] 
+```
+
+
+
+
+
+jmap命令行工具的使用，如果jstack的分析不够用的话，**jmap**能对内存使用、泄露来进行更加深入的分析.jmap命令是一个可以输出所有内存中对象的工具，甚至可以将VM 中的heap
+
+
+
+jmap [pid]
+
+
+
+jmap -heap [pid]
+
+显示Java堆详细信息
+
+
+
+jmap -histo:live [pid]
+显示堆中对象的统计信息
+
+
+
+jmap -finalizerinfo [pid]
+
+打印等待终结的对象信息
+
+
+
+jmap -clstats [pid]
+打印类加载器信息
+
+
+

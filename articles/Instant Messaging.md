@@ -1,5 +1,5 @@
 ---
-layout: post
+9layout: post
 title: "im快速入门"
 permalink: /im-crash
 ---
@@ -68,11 +68,39 @@ Sec-WebSocket-Key/Sec-WebSocket-Accept在主要作用在于提供基础的防护
 
 Netty is an synchoronous event-deriven newtwork application framework  [官网](https://netty.io/index.html)
 
+Netty 是一个 Java 开源框架。Netty 提供 ***并发、异步、事件驱动*** 的网络应用程序框架和工具，用以快速开发高性能、高可靠性的网络服务器和客户端程序。也就是说，Netty 是一个基于 NIO 的客户、服务器端编程框架，使用Netty 可以确保你快速和简单的开发出一个网络应用，例如实现了某种协议的客户，服务端应用。Netty 相当简化和流线化了网络应用的编程开发过程，例如，TCP 和 UDP 的 Socket 服务开发。
+
+
+
+
+
+
+
 底层基于TCP/IP，同时也适用于P2P大数据通信
 
 Netty的层次关系
 
 <img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20220531143158786.png" alt="image-20220531143158786" style="zoom:45%;" />
+
+#### Netty高性能之道
+
+异步非阻塞
+
+零拷贝机制，直接从网卡的buffer中拷贝到Channel中去，调用native方法allocator
+
+内存池，使用堆外内存，避免了ByteBuf的频繁回收
+
+高效的Reactor模型
+
+无锁化的串行设计，采用多线程来合理利用IO空闲时间
+
+大量使用高效的并发编程以及线程安全容器，CAS、volatile
+
+高效的序列化框架
+
+
+
+
 
 #### Netty应用场景
 
@@ -88,7 +116,75 @@ Netty的层次关系
 
 
 
-#### Netty线程模型
+#### Netty工作流程
+
+![image-20230320001329983](https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230320001329983.png)
+
+
+
+#### Netty的设计结构
+
+![image-20230320200002510](https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230320200002510.png)
+
+
+
+### Netty核心组件
+
+**Event**
+
+Netty在内部使用了回调来处理事件，当一个回调被触发时，相关的事件可以交由一个ChannelHandler的实现处理，它的本质就是一次网络请求。
+
+
+
+**Channel**
+
+Channel是Netty传输API的核心，被用于所有的I/O操作，Channel 接口所提供的API大大降低了Java中直接使用Socket类的复杂性。Channel对象维护一个连接的信息，每次网络调用立即返回一个 ChannelFuture 实例，通过注册监听器到 ChannelFuture 上，可以 I/O 操作成功、失败或取消时回调通知调用方。具体的Channel有NioSocketChannel、NioServerSocketChannel。
+
+
+
+**ChannelFuture**
+
+Future提供了一种在操作完成时通知应用程序的方式，可以看作是一个异步操作的结果的占位符，它将在未来的某个时刻完成，并提供对其结果的访问。Netty提供了自己的实现——ChannelFuture，由ChannelFutureListener提供的通知机制消除了手动检查对应操作是否完成的步骤。
+
+
+
+**ChannelHandler**
+
+ChannelHandler 是一个接口，处理 I/O 事件或拦截 I/O 操作，并将其转发到其 ChannelPipeline（业务处理链）中的下一个处理程序。ChannelHandler 本身并没有提供很多方法，因为这个接口有许多的方法需要实现，方便使用期间，可以继承它的子类：ChannelInboundHandler 用于处理入站 I/O 事件、ChannelOutboundHandler 用于处理出站 I/O 操作
+
+
+
+##### ChannelPipeline
+
+保存 ChannelHandler 的 List，用于处理或拦截 Channel 的入站事件和出站操作。ChannelPipeline 实现了一种高级形式的拦截过滤器模式，使用户可以完全控制事件的处理方式，以及 Channel 中各个的 ChannelHandler 如何相互交互。
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230320195025350.png" alt="image-20230320195025350" style="zoom:33%;" />
+
+在具体的数据结构方面，采用了链表的机制来构建这个处理链条
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230320195302384.png" alt="image-20230320195302384" style="zoom: 25%;" />
+
+
+
+
+
+
+
+### Reactor模型
+
+Event-Driven模型
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230320195655170.png" alt="image-20230320195655170" style="zoom:25%;" />
+
+Reactor的事件驱动
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230320195747840.png" alt="image-20230320195747840" style="zoom:25%;" />
+
+
+
+
+
+#### Reactor的线程模型
 
 **单线程**
 
@@ -106,31 +202,33 @@ Reactor主线程池负责连接处理、安全验证、请求转发；而从线�
 
 
 
-#### Netty核心组件
+### 
 
-**Channel**
 
-Channel是Netty传输API的核心，被用于所有的I/O操作，Channel 接口所提供的API大大降低了Java中直接使用Socket类的复杂性
 
-**回调**
 
-Netty在内部使用了回调来处理事件，当一个回调被触发时，相关的事件可以交由一个ChannelHandler的实现处理
 
-**Future**
 
-Future提供了一种在操作完成时通知应用程序的方式，可以看作是一个异步操作的结果的占位符，它将在未来的某个时刻完成，并提供对其结果的访问。Netty提供了自己的实现——ChannelFuture，由ChannelFutureListener提供的通知机制消除了手动检查对应操作是否完成的步骤。
 
-**事件和ChannelHandler**
 
-Netty使用不同的事件来通知我们状态的改变，这使得我们能够基于已经发生的事件来触发适当的动作。每个事件都可以被分发给ChannelHandler类，ChannelHandler类中提供了自定义的业务逻辑，架构上有助于保持业务逻辑与网络处理代码的分离
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 #### WS + Netty 作为即时消息传递的解决方案
 
 ![image-20220531143246900](https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20220531143246900.png)
-
-
 
 
 
@@ -220,3 +318,10 @@ IM场景下，一条消息只会产生一次，但是会被读取多次，是典
 这类业务的基本架构都是这样的，服务端存在一个**转发中心、存储中心和业务处理中心**来应对来自客户端的请求
 
 <img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230319000440484.png" alt="image-20230319000440484" style="zoom:33%;" />
+
+
+
+## 美团 Pike
+
+![图4 Pike 2.0产品全景图](https://p1.meituan.net/travelcube/28d21d62765640c18ddf2145ac7e38eb791076.png)
+

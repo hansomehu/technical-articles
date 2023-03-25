@@ -107,6 +107,14 @@ IOC的底层实现可以理解为Spring容器是如何来管理Bean对象的，�
 
 
 
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230320113419177.png" alt="image-20230320113419177" style="zoom: 33%;" />
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230320115727078.png" alt="image-20230320115727078" style="zoom: 33%;" />
+
+权限修饰符、类名、方法名可以使用*符号来进行全包含
+
+
+
 #### example
 
 ```java

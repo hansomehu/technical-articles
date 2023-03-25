@@ -979,6 +979,12 @@ redis使用多线程并非是完全摒弃单线程，redis还是使用单线程�
 
 
 
+##### 单线程下的阻塞问题
+
+当执行一些CPU密集型的操作，比如AOF持久化，RDB持久化中的fork()操作，大key操作，getAll操作等等都会导致CPU满负荷运转而产生阻塞问题
+
+
+
 #### OOM
 
 maxmemory这个配置项可以设置最大占用内存，可以通过改配置文件的方式来设置，也可以直接在redis的console里面configure set memory <bits>
