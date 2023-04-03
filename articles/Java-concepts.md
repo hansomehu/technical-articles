@@ -56,7 +56,7 @@ permalink: /java-concepts
 
 
 
-### Java语法
+## Java语法基础
 
 **装箱拆箱**
 
@@ -829,6 +829,8 @@ public static void main(String[] args) {
 
 
 
+前端检查（词法分析、语法分析、风险分析）—— 编译成.class文件（类似于汇编代码）—— JVM解释器将其翻译成机器语言并将高频语句对于的机器指令缓存起来（JIT即时编译） —— 执行器负责来做具体的执行
+
 
 
 #### **被动引用**
@@ -989,7 +991,13 @@ JVM的Hotspot版本的元空间不再使用JVM内存，而是使用本地内存
 
 
 
-### JVM常问问题
+## JVM常问问题
+
+
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230330120149688.png" alt="image-20230330120149688" style="zoom:33%;" />
+
+
 
 #### JVM内存区域分布
 
@@ -1071,11 +1079,23 @@ DESCREPTION：分两大部分，一个是线程私有数据区，另外一个是
 
 <img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/1447c58b0cc945fa98b4aeda2eb8eb68~tplv-k3u1fbpfcp-zoom-in-crop-mark:1304:0:0:0.awebp?" alt="bea.png" style="zoom: 50%;" />
 
-**（父类）启动类加载器（Bootstrap ClassLoader）：**是虚拟机自身的一部分，用来加载Java_HOME/lib/目录中的，或者被 -Xbootclasspath 参数所指定的路径中并且被虚拟机识别的类库；
+**启动类加载器（Bootstrap ClassLoader）：**负责加载java.*包内的全部类
 
-**扩展类加载器（Extension ClassLoader）：**负责加载\lib\ext目录或Java. ext. dirs系统变量指定的路径中的所有类库；
+**扩展类加载器（Extension ClassLoader）：**负责加载classpath下的全部jar包
 
-**应用程序类加载器（Application ClassLoader）：**负责加载用户类路径（classpath）上的指定类库，我们可以直接使用这个类加载器。一般情况，如果我们没有自定义类加载器默认就是用这个加载器。
+**应用程序类加载器（Application ClassLoader）：**负责加载用户类路径（classpath）上的指定类库，也就是加载我们自己写的类
+
+
+
+
+
+#### Java Bytecode
+
+![img](https://static001.infoq.cn/resource/image/e3/9a/e31c6a531db579ce36c4a15b290ba79a.png)
+
+上图就是Java字节码的案例，用excel打开就是人类可读的格式。任何语言都有编译成字节码的这个步骤，只要字节码符合JVM的规范，那么JVM就可以运行这些字节码，比如Kotlin、Groovy、Scala等都可以在JVM上来运行
+
+
 
 ---
 
@@ -1176,7 +1196,7 @@ Object obj = clazz.newInstance();
 
 ##### 如何破坏双亲委派机制
 
-`Java.`这类的官方类不可以使用自定义的加载器来加载，必须由BootstrapClassLoader进行加载，这一点是无法破坏的
+`Java.*`这类的官方类不可以使用自定义的加载器来加载，必须由BootstrapClassLoader进行加载，这一点是无法破坏的
 
 如果想自定义类加载器，就需要继承ClassLoader，并重写**findClass**。如果想不遵循双亲委派的类加载顺序，还需要重写**loadClass**，改变加载规则。破坏加载顺序是发生在AppClassLoader及以下的加载器级别中，从其往上走到Bootstrap是无法改变的
 
@@ -1211,7 +1231,147 @@ Object obj = clazz.newInstance();
 
 ---
 
+#### Java Agent（探针）
 
+要学习Java探针首先看看它有什么用处，在zipkin、skywalking以及阿里的轻量级链路追踪arthas中都使用了这种无侵入的方式来进行“埋点”。相较于prometheous的SDK代码嵌入的方式，这种探针就是向用户屏蔽了技术底层的逻辑，使得开发者不需要关注如何进行代码的嵌入，悄无声息地来完成框架开发者所希望植入的逻辑
+
+它的底层运行原理是跳过coding这个阶段，直接将编译好的字节码加入的JVM的程序计数器当中去，起到无侵入式的整体应用增强。常用的字节码框架有ASM，基于这个框架的字节码生成工具有CGLib和Bytebuddy。具体的操作就是在目标方法前和后植入我们的trace逻辑，包括记录调用的类名、方法名、调用时长等，然后在afterExecution中将数据存入数据库或者是发送到服务端机群中去
+
+
+
+<img src="https://static001.infoq.cn/resource/image/ef/68/ef8d25535a4ee98e5c3e206433a1e468.png" alt="img" style="zoom: 33%;" />
+
+
+
+<img src="https://static001.infoq.cn/resource/image/bf/b1/bf6070cd865a48be6159420d0a07b4b1.png" alt="img" style="zoom:33%;" />
+
+
+
+CODE EXAMPLE
+
+```java
+// trace的逻辑类
+public class Tracer {
+public static Tracer newTracer() 
+{return new Tracer();}
+
+public Span newSpan() {
+    return new Span();
+}
+
+
+public static class Span {
+    public void start() {
+        System.out.println("start a span");
+    }
+
+    public void end() {
+        System.out.println("span finish");
+        // todo: save span in db
+    }
+}
+
+public class TraceAdvice {
+
+public static Tracer.Span span = null;
+
+public static void getCurrentSpan() {
+    if (span == null) {
+        span = Tracer.newTracer().newSpan();
+    }
+}
+
+  
+// 切面的定义
+/**
+ * @param target 目标类实例
+ * @param clazz  目标类class
+ * @param method 目标方法
+ * @param args   目标方法参数
+ */
+@Advice.OnMethodEnter
+public static void onMethodEnter(@Advice.This(optional = true) Object target,
+                                 @Advice.Origin Class<?> clazz,
+                                 @Advice.Origin Method method,
+                                 @Advice.AllArguments Object[] args) {
+    getCurrentSpan();
+    span.start();
+
+}
+
+/**
+ * @param target 目标类实例
+ * @param clazz  目标类class
+ * @param method 目标方法
+ * @param args   目标方法参数
+ * @param result 返回结果
+ */
+@Advice.OnMethodExit(onThrowable = Throwable.class)
+public static void onMethodExit(@Advice.This(optional = true) Object target,
+                                @Advice.Origin Class<?> clazz,
+                                @Advice.Origin Method method,
+                                @Advice.AllArguments Object[] args,
+                                @Advice.Return(typing = Assigner.Typing.DYNAMIC) Object result) {
+    span.end();
+    span = null;
+
+}
+
+  
+// 植入advice（在JVM中如何利用这些切面）
+  public class PreMainTraceAgent {
+
+public static void premain(String agentArgs, Instrumentation inst) {
+
+    // Bytebuddy 的 API 用来修改
+    AgentBuilder agentBuilder = new AgentBuilder.Default()
+            .with(AgentBuilder.PoolStrategy.Default.EXTENDED)
+            .with(AgentBuilder.InitializationStrategy.NoOp.INSTANCE)
+            .with(AgentBuilder.RedefinitionStrategy.RETRANSFORMATION)
+            .with(new WeaveListener())
+            .disableClassFormatChanges();
+
+    agentBuilder = agentBuilder
+            // 匹配目标类的全类名
+            .type(ElementMatchers.named("baidu.bms.debug.Greeting"))
+            .transform(new AgentBuilder.Transformer() {
+                @Override
+                public DynamicType.Builder<?> transform(DynamicType.Builder<?> builder,
+                                                        TypeDescription typeDescription,
+                                                        ClassLoader classLoader,
+                                                        JavaModule module) {
+
+                    return builder.visit(
+                            // 织入切面
+                            Advice.to(TraceAdvice.class)
+                                    // 匹配目标类的方法
+                                    .on(ElementMatchers.named("sayHello"))
+                    );
+                }
+            });
+    agentBuilder.installOn(inst);
+}
+
+// 本地启动
+public static void main(String[] args) throws Exception {
+    ByteBuddyAgent.install();
+    Instrumentation inst = ByteBuddyAgent.getInstrumentation();
+
+    // 增强
+    premain(null, inst);
+    // 调用
+    Class greetingType = Greeting.class.
+            getClassLoader().loadClass(Greeting.class.getName());
+    Method sayHello = greetingType.getDeclaredMethod("sayHello", String.class);
+    sayHello.invoke(null, "developer");
+}
+```
+
+
+
+
+
+---
 
 #### 垃圾回收系列
 
@@ -1493,3 +1653,227 @@ MaxHeapSize通常为最大内存的1/4
 元空间不在JVM当中，它存在于本地内存里，但是也需要给其分配合理的大小。元空间默认的大小一般也就是几十MB，在大型业务下很快就会被撑爆了
 
 一般设置为1G就差不多了，元空间里面一般都是类的信息（框架）不需要太大的内存空间
+
+
+
+
+
+## JVM深入理解
+
+![image-20230330172549199](https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230330172549199.png)
+
+
+
+### 类加载子系统
+
+
+
+
+
+### 运行时数据区
+
+
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230401205607585.png" alt="image-20230401205607585" style="zoom: 25%;" />
+
+补充几个自己以前不知道的点。元数据区是JVM的一个抽象概念，每个JVM自己的发行版可以自定义这块区域的管理和结构，它使用的本地内存，设置不当会对整个虚拟机或者是物理服务器带来性能影响
+
+
+
+
+
+#### 共享区
+
+
+
+#### 线程私有区
+
+
+
+
+
+### 编译/解释/执行引擎
+
+
+
+#### Overall
+
+**前端检查**（词法分析、语法分析、风险分析）—— **编译成.class文件**（类似于汇编代码）—— **JVM解释**器将其翻译成机器语言（当前硬件平台）并将高频语句对于的机器指令缓存起来（**JIT即时编译**） —— **执行器**负责来做具体的执行
+
+执行引擎在JVM中的位置，属于三大核心组成部分之一，承担了代码的解释和执行
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230330172809274.png" alt="image-20230330172809274" style="zoom: 25%;" />
+
+
+
+执行引擎不断从**PC Registe**r中去读取下一次要执行的指令，随之到线程的Java栈中去读取对应的**栈帧**，栈帧中包含了本次操作的**操作数、变量地址、返回值地址**等，通过这些地址来**取值、计算和赋值**
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230330174022298.png" alt="image-20230330174022298" style="zoom:25%;" />
+
+
+
+举例说明，PC目前来到了21号指令，去往Java Stack读21好op code，然后去往操作数栈读取要操作的数据
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230330202627830.png" alt="image-20230330202627830" style="zoom:25%;" />
+
+
+
+
+
+#### 解释与编译（后端编译） Interpretation & Compilation In Depth
+
+
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230330202816316.png" alt="image-20230330202816316" style="zoom:33%;" />
+
+当前Java保留了两条编译-执行的路径，一条是基于interpretor的解释方法，另外一条是基于JIT Compiler的编译方法。前者是逐条进行编译执行，后者是将高频语句全部编译后缓存机器码。二者的目的不一样，前者旨在减少冷启动的时间，后者则意为加速取指执行的效率。
+
+
+
+生成字节码流程与字节码解释/编译流程
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230330230626341.png" alt="image-20230330230626341" style="zoom: 33%;" />
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230330230905825.png" alt="image-20230330230905825" style="zoom: 25%;" />
+
+
+
+整体流程概览
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230330231215467.png" alt="image-20230330231215467" style="zoom: 25%;" />
+
+
+
+
+
+通过JVM参数可以设置自使用解释器或是编译器 `-Xint` 解释器 `-Xcomp` 编译器 `-Xmixed ` 混合使用
+
+逻辑重复度高并且频率高，这时候JIT高效；如果代码多样，每类操作的频率适中，这时候显然解释效率更高
+
+
+
+
+
+##### 解释器
+
+解释器也采用高级语言编码 —— 字节码 —— 翻译到机器码
+
+之所以这么来设计的原因是在JVM开发之初时如果按照一条完整的流水线来做的话，不方便开发的管理，因为每个人的工作周期都会很长。采用一个中间状态“Class字节码”这么一来整个开发流程被拆分成了两部分
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230330232104220.png" alt="image-20230330232104220" style="zoom:33%;" />
+
+
+
+##### JIT编译
+
+JIT编译就是更加类似于传统的编译型语言的执行流程，在程序开始时把全部的语句进行编译，然后直接调用编译好的机器码即可。JVM中有关解释执行的一条路线就是编译，它主要的目的是将一些热点语句进行编译后缓存起来，下一次被调用时直接读缓存即可
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230330200638781.png" alt="image-20230330200638781" style="zoom:33%;" />
+
+阈值可以通过**-XX:-CompliationThreshold**来进行设置，默认server端是10000次
+
+当一个语句不再热门之后会自动将其从缓存中删掉，通过**-XX:-UseCounterDecay**可以进行设置
+
+
+
+##### C1/C2/Graal编译器
+
+client端用的是C1，server端是C2，64位的机器默认是C2
+
+C2的特点是会进行深度优化，适合机器资源充足的情况，优化设计到基于逃逸分析的栈上分配、同步消除
+
+C1适合小机器，尤其是嵌入式的使用，优化只涉及到去冗余化、去虚拟化
+
+Graal全方位优于C2
+
+
+
+##### AOT（Ahead of Time）编译器
+
+一个实验性的编译器，目前不具备商用价值
+
+在coding阶段将Java文件编译成class字节码之后再通过jaotc转化为.so文件，这个.so文件可以直接被JVM取指执行
+
+AOT使得Java丧失了链接期的动态性，在运行前一切就已经确定了
+
+
+
+#### 前端编译器
+
+javac将Java代码编译为Class字节码
+
+
+
+
+
+### 详述Java字节码
+
+
+
+使用.class字节码文件作为高级语言与JVM中间状态的意义，一次编译到处运行
+
+JVM则负责具体和OS打交道，也就是JVM只需要提供出来兼容Linux、Unix、Win即可和你使用哪门语言无关
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230331114842412.png" alt="image-20230331114842412" style="zoom:33%;" />
+
+
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230331121948612.png" alt="image-20230331121948612" style="zoom:33%;" />
+
+
+
+
+
+#### 通过字节码分析代码的执行 cases
+
+
+
+第一个case比较简单，就是一个Integer的值在-127～127之间的时候会用一个cache进行存储所以内存地址会一样，而大于127时则是正常走对象的创建流程，从而两个对象的地址不同
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230331122339915.png" alt="image-20230331122339915" style="zoom: 25%;" />
+
+
+
+用字节码来分析一个常见的问题，如下的输出是false，为什么呢
+
+分析了字节码之后很容易得出，第一行实际上是一个StringBuilder进行了append操作后调用了其toString方法
+
+而第二行则直接使用了iconst一个常量空间来存储字符串
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230331151310397.png" alt="image-20230331151310397" style="zoom: 33%;" />
+
+
+
+下图是一个更加复杂的分析
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230331153448574.png" alt="image-20230331153448574" style="zoom: 25%;" />
+
+它的输出是：Son.x = 0   \n  Son.x = 30  \n    20
+
+最后的fater.x读取的是Father对象内存地址的值，这个值可以通过之类调用super.x进行修改，在多态开发的时候需要主要到这一点，要读取子类的成员变量时不能这么来写代码，要么就调super改掉父类的去
+
+
+
+#### 字节码长什么样
+
+
+
+首先根据Class规范看看一个.Class文件中都包含哪些部分
+
+其次具体来分析一个二进制的文件
+
+最后再来看看可视化之后的人类可读版的字节码文件
+
+![image-20230331193448438](https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230331193448438.png)
+
+
+
+#### CLASS文件的组成部分
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230331191752311.png" alt="image-20230331191752311" style="zoom: 50%;" />
+
+总结归纳一下它所包含的东西：魔数（cafe babe）、版本号、常量池、访问标志、类/父类/接口索引、字段表集合、方法表集合、属性表集合
+
+
+
+### 垃圾回收优化

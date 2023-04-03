@@ -151,7 +151,31 @@ public class Test4 {
 
 #### Amazon Prime Video 
 
-![image-20230319104908758](https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230319104908758.png)
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230319104908758.png" alt="image-20230319104908758" style="zoom: 33%;" />
+
+
+
+
+
+## System Optimization
+
+
+
+#### 接口优化
+
+优化不要想着只从sql上去入手，接口的biz逻辑当中很多时候也存在着可以通过调换代码顺序而加速响应时间的地方，多留心这些
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230403120753329.png" alt="image-20230403120753329" style="zoom:33%;" />
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -268,3 +292,6 @@ public class Test4 {
 如果token存在说明订单提交过了，那么本次提交就拒掉，否则就通过
 
 原子性操作Redis使用lua脚步，然后调用redisTemplate的execute( )方法来执行
+
+
+

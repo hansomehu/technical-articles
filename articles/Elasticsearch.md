@@ -24,6 +24,12 @@ permalink: /es-crash
 
 
 
+![image-20230325104428388](https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230325104428388.png)
+
+
+
+
+
 #### **倒排索引与正排**
 
 倒排就是根据关键字去找到对应所在文档的ID
