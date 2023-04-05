@@ -1690,6 +1690,18 @@ MaxHeapSize通常为最大内存的1/4
 
 
 
+##### PC Register
+
+Java中的PC寄存器是对物理寄存器的一种模拟，并不是真实存在的物理寄存器，只是JVM里面用来存放程序执行序列的虚拟存储结构，里面放的是栈帧的偏移
+
+Java栈中一个frame是一个方法的各类信息，寄存器中存放着指定栈帧的地址
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230403170940785.png" alt="image-20230403170940785" style="zoom: 25%;" />
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230405174345241.png" alt="image-20230405174345241" style="zoom:33%;" />
+
+
+
 
 
 ### 编译/解释/执行引擎
