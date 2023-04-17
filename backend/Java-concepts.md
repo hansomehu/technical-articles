@@ -16,15 +16,27 @@ permalink: /java-concepts
 
 优点包括：减少了耦合；方便开发者的维护，能够更好的对模块（对象）进行性能把握；提高软件的可重用性；降低了构建大型系统应用的风险
 
+
+
 **继承**
 
 继承应该遵循里氏替换原则，子类对象必须能够替换掉所有父类对象。
 
+
+
 **多态**
 
-多态分为编译时多态和运行时多态：编译时多态主要指方法的重载；运行时多态指程序中定义的对象引用所指向的具体类型在运行期间才确定
+多态分为编译时多态和运行时多态：**编译时多态主要指方法的重载**；**运行时多态指程序中定义的对象引用所指向的具体类型在运行期间才确定**
 
 多态的特性使得OOP的灵活度和开发成本得到进一步的降低，通过没有把对象写死的方式来实现
+
+针对运行时多态举个例子：
+
+```java
+class Piano extends Instrument;
+
+Instrument ins = new Piano(); //运行时才确定对象的具体类型
+```
 
 
 
@@ -548,7 +560,11 @@ Java内存模型为了实现volatile有序性和可见性，定义了4种内存�
 
 和String相比，Buffer和Builder都是可变对象，不需要生成大量的中间对象，因此效率高、节约空间
 
-最底层的东西是final char[]
+最底层的东西是 **final char[]**
+
+> Java1.9之后变成了byte[]数组，目的是节约空间，一个byte占一个字节，但是也为两个字节的编码（UTF-16）提供了兼容机制
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230412103717478.png" alt="image-20230412103717478" style="zoom:25%;" />
 
 
 
@@ -587,6 +603,73 @@ public synchronized StringBuffer append(String str) {
 
 
 扩容的时候是扩到原数组的2倍+2，然后再执行一个copyOf操作 
+
+
+
+**内存位置**
+
+jdk1.7及之前存放在永久代中
+
+jdk1.8及之后都是放在堆空间中（字符串常量池，类常量池和运行时常量池依旧是在metaspace，并且整个metaspace用的是直接内存来放-XXDirectMemeory）
+
+
+
+##### new String() 与 String 变量相加的区别
+
+String变量相加在底层是new 一个 StringBuilder然后调用append方法，最后再toString，它会新建一个对象（底层就是new一个String）
+
+这个时候如果要把它放进字符串常量池的话可以调用intern()方法，这个时候如果池中有值和这个相同的字符串的话会直接返回它的内存地址
+
+
+
+##### Str + Str 与 append 方法的效率差距
+
+Str+Str在底层先new 一个 Builder，然后new String，涉及到两次对象的创建，耗时很大
+
+而append直接就一次
+
+
+
+##### intern() 的思想及使用
+
+```java
+String str1 = "1234";
+String str2 = (str1 + "abc").intern(); // 如果池中存在“123abc”这个字符串则直接返回它的地址
+```
+
+就是一种节约空间效率的编码方式
+
+
+
+##### new String("a")创建了几个对象？
+
+2个
+
+
+
+##### new String("a") + new String("b") 创建了几个对象？
+
+4个
+
+
+
+#### StringTable
+
+元数据区当中专门集中存放Sting类型数据的虚拟结构
+
+字符串常量池不会存放重复的内容
+
+默认长度1009，-XXStringTableSize设置大小
+
+
+
+##### ST的垃圾回收机制
+
+
+
+
+
+#### intern( ) 方法
 
 
 
@@ -1013,23 +1096,33 @@ DESCREPTION：分两大部分，一个是线程私有数据区，另外一个是
 
 **程序计数器（Program Counter Register）：**当前线程所执行的字节码的行号指示器，字节码解析器的工作是通过改变这个计数器的值，来选取下一条需要执行的字节码指令，分支、循环、跳转、异常处理、线程恢复等基础功能，都需要依赖这个计数器来完成；
 
+
+
 **Java 虚拟机栈（Java Virtual Machine Stacks）：**用于存储局部变量表、操作数栈、动态链接、方法出口等信息；
+
+
 
 **本地方法栈（Native Method Stack）：**与虚拟机栈的作用是一样的，只不过虚拟机栈是服务 Java 方法的，而本地方法栈是为虚拟机调用 Native 方法服务的；
 
----
+
 
 **Java 堆（Java Heap）：**Java 虚拟机中内存最大的一块，是被所有线程共享的，几乎所有的对象实例都在这里分配内存；
 
+
+
 **方法区（Methed Area）：**包括运行时常量池和类信息
 
+
+
 **类信息：**类的元数据，诸如类型、方法、字段等信息
+
+
 
 **运行时常量池：**基本类型的数字、文本字符串、类的全限定名
 
 ---
 
-##### 类加载的过程（区别于对象的初始化）
+#### 类加载的过程（区别于对象的初始化）
 
 类加载分为以下 5 个步骤：
 
@@ -1061,6 +1154,8 @@ DESCREPTION：分两大部分，一个是线程私有数据区，另外一个是
 
   <u>空闲列表：</u>用表记录下空闲的内存块
 
+- 处理内存安全问题，判断是否需要采用TLAB
+
 - 值的初始化
 
   在准备过程中会将**final修饰**的静态变量直接赋初值，对**static修饰**的静态变量赋零值。虚拟机需要将分配到的内存空间中的数据类型都初始化为零值（不包括对象头），这一步操作保证了对象的实例字段在 Java 代码中可以不赋初始值就直接使用，程序能访问到这些字段的数据类型所对应的零值。
@@ -1072,6 +1167,16 @@ DESCREPTION：分两大部分，一个是线程私有数据区，另外一个是
 - 执行init
 
 ​		为对象的属性赋值，执行构造方法
+
+
+
+#### 对象的内存布局
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230414234259313.png" alt="image-20230414234259313" style="zoom: 25%;" />
+
+
+
+
 
 ---
 
@@ -1111,6 +1216,16 @@ java虚拟机只会类名相同且加载该类的加载器均相同的情况下�
 
 
 
+##### 双亲委派的缘由
+
+开放性，同一个类被多个不同的加载器进行加载可以实现隔离
+
+安全性，官方类只能由引导类加载器进行加载，这个规则出于安全缘由不能被修改
+
+Java官方只是建议采用双亲委派机制
+
+
+
 ##### 原生类加载的流程
 
 (1) 类加载器从已加载的类中查询该类是否已加载，如果已加载则直接返回。
@@ -1119,7 +1234,7 @@ java虚拟机只会类名相同且加载该类的加载器均相同的情况下�
 
 (3) 如果启动类加载器加载失败（例如在`$JAVA_HOME/jre/lib`里未查找到该`class`），会使用拓展类加载器来尝试加载，继续失败则会使用`AppClassLoader`来加载，继续失败则会抛出一个异常`ClassNotFoundException`，然后再调用当前加载器的`findClass()`方法进行加载。
 
-
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230416120405574.png" alt="image-20230416120405574" style="zoom: 50%;" />
 
 ##### 自定义类加载
 
@@ -1194,11 +1309,29 @@ Object obj = clazz.newInstance();
 
 
 
+
+
+##### 热替换机制 Hot Swap
+
+首先自定义一个加载器，然后实例化这个加载器从指定路径读取Class文件
+
+当我们需要替换掉原类的代码逻辑的时候我们只需要将新的Class文件替换掉指定路径中存在的那个即可
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230416135843690.png" alt="image-20230416135843690" style="zoom:33%;" />
+
+
+
+
+
+
+
+
+
 ##### 如何破坏双亲委派机制
 
 `Java.*`这类的官方类不可以使用自定义的加载器来加载，必须由BootstrapClassLoader进行加载，这一点是无法破坏的
 
-如果想自定义类加载器，就需要继承ClassLoader，并重写**findClass**。如果想不遵循双亲委派的类加载顺序，还需要重写**loadClass**，改变加载规则。破坏加载顺序是发生在AppClassLoader及以下的加载器级别中，从其往上走到Bootstrap是无法改变的
+如果想自定义类加载器，就需要继承ClassLoader或者URLClassLoader也行，并重写**findClass**。如果想不遵循双亲委派的类加载顺序，还需要重写**loadClass**，改变加载规则。破坏加载顺序是发生在AppClassLoader及以下的加载器级别中，从其往上走到Bootstrap是无法改变的
 
 
 
@@ -1460,9 +1593,11 @@ myObject2 = null;
 
 ##### **关于FullGC和MinorGC的问题**
 
-**MinorGC：**在Eden区和Survivor空间不足的时候触发，开销比较小，执行的过程也很快速
+**MinorGC：**在Eden区空间不足的时候触发，GC期间存在STW，执行的过程很快速
 
-**MajorGC/Full GC：**前者只回收老年代，而后者是整堆回收，通常混淆二者的用法是因为它们的触发场景非常的类似，下面是Full GC触发的场景
+**MajorGC：**只回收老年代
+
+**Full GC：**整堆+方法区的回收，下面是Full GC触发的场景
 
 - 老年代空间不足
 - MetaSpace空间不足
@@ -1666,6 +1801,140 @@ MaxHeapSize通常为最大内存的1/4
 
 ### 类加载子系统
 
+#### 类Class的生命周期
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230415102949008.png" alt="image-20230415102949008" style="zoom: 33%;" />
+
+##### Loading
+
+将Class文件以二进制的方式载入JVM，可以有多种方式，可以直接从本地加载、网络加载、也可以由代码生成符合格式的二进制码
+
+
+
+##### Linking - Verification
+
+主要就是做字节码格式、语法层面的验证
+
+
+
+##### Linking - Preparation
+
+给基本型赋初值（默认值）
+
+给静态static变量赋初值（这里不包括final，它在编译期就被赋了初值）
+
+staric final也是在这个阶段进行赋值
+
+
+
+##### Linking - Resolution
+
+将符号引用转换为直接引用
+
+
+
+##### Initialization
+
+初始化阶段会执行Java类的代码，比如static修饰的代码块和方法，以及构造方法、postConstruct标柱的方法
+
+具体是通过编译器调用clinit()方法来执行，这个过程也涉及到**“由父及子，静态先行”**的原则
+
+具体case的赋值原则
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230415170654367.png" alt="image-20230415170654367" style="zoom: 33%;" />
+
+
+
+clinit方法存在线程安全问题，它没有用synchronized进行标识，死锁后也难以排查问题，容易导致程序发生死锁
+
+
+
+##### 类的主动与被动使用
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230415175155584.png" alt="image-20230415175155584" style="zoom:50%;" />
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230415175228715.png" alt="image-20230415175228715" style="zoom:50%;" />
+
+
+
+
+
+#### 类加载器
+
+##### ClassLoader的基本特性
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230415205039099.png" alt="image-20230415205039099" style="zoom:50%;" />
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230415205209654.png" alt="image-20230415205209654" style="zoom:50%;" />
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230415205249658.png" alt="image-20230415205249658" style="zoom:50%;" />
+
+
+
+##### 类加载器的类别
+
+所谓父子加载器的关系并不是通过extends来实现的，而是通过聚合关系
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230415210004565.png" alt="image-20230415210004565" style="zoom:33%;" />
+
+
+
+##### Bootstrap ClassLoader
+
+由C/C++代码编写，没有父类加载器，用来加载JVM需要的类以及java、javax、sun域开头的包
+
+同时也负责加载其他全部加载器类
+
+
+
+##### ExtensionClassLoader
+
+是Launcher类中的一个静态内部类，负责加载java/lib/ext路径下的类
+
+
+
+##### ApplicationClassLoader
+
+系统类加载器，用户自定义的加载器也属于这一部分
+
+
+
+##### 各种类加载器的继承关系
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230416004122186.png" alt="image-20230416004122186" style="zoom:33%;" />
+
+
+
+##### ClassLoader源码解析
+
+getParent()
+
+
+
+**loadClass(String name)：**
+
+loader中实现双亲委派机制最重要的方法，通过递归的方式层层调用parent的loadClass直到找到可以加载该类的加载器
+
+找到合适的loader之后再调用findClass去获取二进制码
+
+重写该方法可以打破双亲委派
+
+
+
+**findClass()：**调用defineClass，并将二进制码传给它去生成对应的Clazz实例，如果不需要打破双亲委派则重写该方法即可
+
+
+
+**defineClass()：**具体执行类加载的方法
+
+
+
+**Class.forName和loadClass()**的异同：最大的区别就在于前者是主动使用，而后者是被动使用，只加载而不初始化
+
+
+
+##### 双亲委派见上文部分
+
 
 
 
@@ -1684,6 +1953,70 @@ MaxHeapSize通常为最大内存的1/4
 
 #### 共享区
 
+##### MetaSpace
+
+<img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/05c83626a6d64087b4b31144f92fd53e~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.awebp" alt="在这里插入图片描述" style="zoom:33%;" />
+
+元空间在JDK1.8后全部存放在直接内存当中
+
+
+
+##### 直接内存概念 DirectMemory
+
+Bytebuffer（NIO） 类中有一个allocateDirect 方法可以为缓冲区分配直接内存
+
+使用直接内存能够避免数据的来回拷贝（在Kernel和User Mode之间），从而加快数据的读写速度
+
+适合在读写平凡的场景下使用
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230415102644360.png" alt="image-20230415102644360" style="zoom:33%;" />
+
+
+
+
+
+##### 堆空间 Heap
+
+
+
+##### 字符串常量池（堆内）
+
+
+
+##### TLAB
+
+-XX:+UseTLAB
+
+将eden区拿出一部分来切割成很多小份，每个线程都单独拥有一份，这样避免多线程并发的问题
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230414172740381.png" alt="image-20230414172740381" style="zoom:25%;" />
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230414172831373.png" alt="image-20230414172831373" style="zoom:33%;" />
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230414172903857.png" alt="image-20230414172903857" style="zoom:33%;" />
+
+
+
+
+
+##### 逃逸分析、栈上分配
+
+-XX:+PrintGC  -XX:+DoEscapeAnalysis
+
+堆不是为对象分配内存的唯一方案，但绝对是主流方案
+
+将不会发生逃逸的对象（通过是方法内部new出来的对象，并且这个对象没作为返回值以及没背返回值引用）
+
+一句话讲就是这个对象的作用范围仅仅局限在这个方法当中
+
+
+
+##### 标量替换
+
+-XX:+EliminateAllocation
+
+将不存在逃逸的对象替换成标量（Scalar）然后存放在局部变量表当中
+
 
 
 #### 线程私有区
@@ -1699,6 +2032,44 @@ Java栈中一个frame是一个方法的各类信息，寄存器中存放着指�
 <img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230403170940785.png" alt="image-20230403170940785" style="zoom: 25%;" />
 
 <img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230405174345241.png" alt="image-20230405174345241" style="zoom:33%;" />
+
+
+
+##### Virtual Machine Stack 虚拟机栈
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230405214314979.png" alt="image-20230405214314979" style="zoom:25%;" />
+
+each frame contains **Local Variables / Dynamic Links / Operand Stack / Return Address** 
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230413114748541.png" alt="image-20230413114748541" style="zoom:25%;" />
+
+
+
+> The OOM & SOF error of VMS
+
+-Xss [size]
+
+通常是调用的方法过多导致栈溢出，常出现在业务逻辑比较复杂的代码逻辑当中，一个本身调用链路就多再加上调用很频繁，在高峰期就会出现OOM
+
+
+
+LV：存放当前方法运行需要方法参数和局部变量
+
+DL：指向运行时常量池的引用
+
+OS：用数组来实现的，存放中间计算结果
+
+RA：方法正常或异常退出时的定义，存放的是PC寄存器的值，也就是在涉及到方法调用的时候在方法切换时更新PC寄存器
+
+
+
+##### 本地方法栈
+
+C/C++的方法，通常涉及到操作系统底层逻辑的调用，这部分东西Java做不了或者用Java来做的话效率很低
+
+比如Thread类中对线程的操作方法
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230414124041303.png" alt="image-20230414124041303" style="zoom:25%;" />
 
 
 
@@ -1888,4 +2259,24 @@ JVM则负责具体和OS打交道，也就是JVM只需要提供出来兼容Linux�
 
 
 
+### 
+
+
+
+## 性能优化
+
+
+
 ### 垃圾回收优化
+
+
+
+### OOM优化
+
+
+
+### 内存泄露优化
+
+
+
+### 多线程优化
