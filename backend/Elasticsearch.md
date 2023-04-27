@@ -42,27 +42,57 @@ permalink: /es-crash
 
 #### REST操作
 
-**基本操作**
+以下的操作都没有使用type这个概念，直接就是一个业务类型一个index（table/database），然后属于该业务类型的数据存放在这里面
 
-PUT http://121.5.143.186:9200/shopping 
 
-GET http://121.5.143.186:9200/shopping
+
+##### **基本操作**
+
+```js
+PUT /{index}/{type}/{id}
+{
+  "field": "value",
+  ...
+}
+```
+
+官方文档翻译版 https://www.elastic.co/guide/cn/elasticsearch/guide/current/data-in-data-out.html
+
+
 
 GET /_cat/indices?v		展示所有的索引的详细信息
 
+
+
 DELETE /indice_name		删除一个索引
+
+
 
 POST /indice_name/_doc		向指定索引添加文档数据
 
+
+
 POST /indice_name/_doc/id		指定id
+
+
 
 GET /indice_name/_doc/id		根据id来查文档记录
 
+
+
 GET /indeci_name/_search		查询索引下全部的数据
+
+
 
 PUT /indice_name/_doc/id		修改指定数据，全量数据修改（幂等）
 
+
+
 POST /indice_name/_update/id		局部更新
+
+老语法 **POST /website/blog/1/_update**
+
+**ES中的文档一旦创建是无法被修改的，**在后台更新操作执行的逻辑是先删除后新建文档
 
 ```json
 {
@@ -73,11 +103,110 @@ POST /indice_name/_update/id		局部更新
 }
 ```
 
+
+
 DELETE /indice_name/_doc/id		删除指定数据
 
+老语法 **DELETE /website/blog/123**
 
 
-**高级查询**
+
+GET /website/blog (type的概念可以直接省略掉) /123?_source=title,text 查询指定字段
+
+```http
+{
+  "_index" :   "website",
+  "_type" :    "blog",
+  "_id" :      "123",
+  "_version" : 1,
+  "found" :   true,
+  "_source" : {
+      "title": "My first blog entry" ,
+      "text":  "Just trying this out..."
+  }
+}
+```
+
+
+
+GET /website/blog/123/_source 不要任何元数据
+
+```http
+{
+   "title": "My first blog entry",
+   "text":  "Just trying this out...",
+   "date":  "2014/01/01"
+}
+```
+
+
+
+PUT /website/blog/123/_create 创建新的文档
+
+如果创建失败则返回 409 Conflict
+
+
+
+_mget批量查询
+
+index相同
+
+```http
+GET /website/blog/_mget
+{
+   "ids" : [ "2", "1" ]
+}
+```
+
+index不同
+
+```http
+GET /_mget
+{
+   "docs" : [
+      {
+         "_index" : "website",
+         "_type" :  "blog",
+         "_id" :    2
+      },
+      {
+         "_index" : "website",
+         "_type" :  "pageviews",
+         "_id" :    1,
+         "_source": "views"
+      }
+   ]
+}
+```
+
+
+
+bulk批量操作，在一个bulk中可以定义一个流式的操作群
+
+```http
+POST /_bulk
+{ "delete": { "_index": "website", "_type": "blog", "_id": "123" }} 
+{ "create": { "_index": "website", "_type": "blog", "_id": "123" }}
+{ "title":    "My first blog post" }
+{ "index":  { "_index": "website", "_type": "blog" }}
+{ "title":    "My second blog post" }
+{ "update": { "_index": "website", "_type": "blog", "_id": "123", "_retry_on_conflict" : 3} }
+{ "doc" : {"title" : "My updated blog post"} } 
+```
+
+
+
+GET /_search?size=5&from=10 分页查询
+
+
+
+#### **高级查询**
+
+https://www.elastic.co/guide/cn/elasticsearch/guide/current/_most_important_queries.html
+
+https://www.elastic.co/guide/cn/elasticsearch/guide/current/combining-queries-together.html
+
+
 
 GET /indice_name/_search		
 
@@ -198,8 +327,6 @@ PUT /indice_name/_mapping
 当前的Java API推荐使用下面的新Client，但是也不排除仍然有很多公司在使用HighRestClientAPI
 
 https://www.elastic.co/guide/en/elasticsearch/client/java-api-client/current/introduction.html
-
-
 
 
 
@@ -366,6 +493,8 @@ sysctl -p
 
 在客户端收到成功响应时，文档变更已经 在主分片和所有副本分片执行完成，变更是安全的。有一些可选的请求参数允许您影响这个过程，可能以数据安全为代价提升性能。这些选项很少使用，因为 Elasticsearch 已经很快，但是为了完整起见， 请参考下文：
 
+
+
 **consistency**
 
 即一致性。在默认设置下，即使仅仅是在试图执行一个写操作之前，主分片都会要求必须要有规定数量quorum（或者换种说法，也即必须要有大多数）的分片副本处于活跃可用状态，才会去执行写操作（其中分片副本 可以是主分片或者副本分片）。这是为了避免在发生网络分区故障（network partition）的时候进行写操作，进而导致数据不一致。 规定数量即： int((primary + number_of_replicas) / 2 ) + 1 consistency 参数的值可以设为：
@@ -377,6 +506,8 @@ sysctl -p
 - quorum：默认值为quorum , 即大多数的分片副本状态没问题就允许执行写操作。
 
   注意，规定数量的计算公式中number_of_replicas指的是在索引设置中的设定副本分片数，而不是指当前处理活动状态的副本分片数。如果你的索引设置中指定了当前索引拥有3个副本分片，那规定数量的计算结果即：int((1 primary + 3 replicas) / 2) + 1 = 3，如果此时你只启动两个节点，那么处于活跃状态的分片副本数量就达不到规定数量，也因此您将无法索引和删除任何文档。
+
+
 
 **timeout**
 
@@ -390,8 +521,6 @@ sysctl -p
 读取从主节点或者其副本进行读取都可以   这块的重点是为了实现负载均衡而对主副做轮询
 
 ![image-20220518122122145](https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20220518122122145.png)
-
-
 
 
 
@@ -503,7 +632,9 @@ PUT /indice_name
 
 在更新的时候传入seq_no和primary_term，只有版本匹配才能更新
 
-POST /indice_name/id?if_seq_no=1&if_primary_term=1
+`POST /indice_name/id?if_seq_no=1&if_primary_term=1`
+
+ 任何老版本的修改请求都将被舍弃，假设现在有一条_version=3的请求操作成功了，此时来了一条_version=2的请求，那么这条请求将被直接舍弃
 
 
 
@@ -727,6 +858,116 @@ public class ContentService {
 ```
 
 
+
+
+
+### 源码与原理
+
+---
+
+使用方法见上文，主要明白如何ES中的索引是如何工作的，如何建立索引、查询数据以及自定义分词即可。本节专注在ES的工作机制上面
+
+
+
+#### 分片机制
+
+
+
+##### 物理分片
+
+```http
+PUT /blogs
+{
+   "settings" : {
+      "number_of_shards" : 3,
+      "number_of_replicas" : 1
+   }
+}
+```
+
+![拥有两个节点的集群](https://www.elastic.co/guide/cn/elasticsearch/guide/current/images/elas_0203.png)
+
+ES的分片机制与Kafka的十分类似，都是一台机器上保持一个index的某些分片（Shards）的数据以及除此之外的其他分片的备份（Replicas）数据
+
+当数据量不断加大时，可以动态调整部署机器的数量，以及每个Shards中的数据大小
+
+```http
+PUT /blogs/_settings
+{
+   "number_of_replicas" : 2
+}
+```
+
+
+
+总体看来，ES的分片具备routing和loadbalancing的功能。用户请求到任意一台机器都可以被该机器转发到正确的地址，并且这个转发的过程符合负载均衡原则。此外，读写都是在Shard上进行，Replica的意义只保留为灾备。
+
+
+
+##### 文档更新与持久化
+
+
+
+##### 段合并
+
+<img src="https://www.elastic.co/guide/cn/elasticsearch/guide/current/images/elas_1110.png" alt="Two commited segments and one uncommited segment in the process of being merged into a bigger segment" style="zoom: 50%;" />
+
+小段合并成大段的时候会将之前因删除/更新而废弃的老文档彻底删掉，在此之前都是通过维护一个isDel字段来判断状态
+
+
+
+#### 评分机制（排序与相关性）
+
+
+
+#### 分布式检索
+
+
+
+#### 索引管理
+
+
+
+##### 分词器管理 Analyzer
+
+一个 *分析器* 就是在一个包里面组合了三种函数的一个包装器， 三种函数按照顺序被执行：字符过滤器、分词器、词单元过滤器
+
+自定义分词器可以通过HTTP请求的方式进行，但是这种方式只适合定义复杂度极小的分词器
+
+```http
+PUT /my_index
+{
+    "settings": {
+        "analysis": {
+            "char_filter": {
+                "&_to_and": {
+                    "type":       "mapping",
+                    "mappings": [ "&=> and "]
+            }},
+            "filter": {
+                "my_stopwords": {
+                    "type":       "stop",
+                    "stopwords": [ "the", "a" ]
+            }},
+            "analyzer": {
+                "my_analyzer": {
+                    "type":         "custom",
+                    "char_filter":  [ "html_strip", "&_to_and" ],
+                    "tokenizer":    "standard",
+                    "filter":       [ "lowercase", "my_stopwords" ]
+            }}
+}}}
+```
+
+如果我们需要自定义一个更大的分词器，生产级别的话，需要将分词表等规则以配置文件的方式加载进ES
+
+
+
+##### 文档类型Type及其映射
+
+之所以会存在type这个分类机制是由于ES的底层每个片段采用一个Lucene引擎来做，每个Lucene实例中的每个文档都有一个_type字段来对它们进行分类。为了让ES更像是NoSQL，在高版本中已经谈化不提type这个概念了。
+
+https://www.elastic.co/guide/cn/elasticsearch/guide/current/mapping.html   
 
 
 

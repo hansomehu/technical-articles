@@ -1171,7 +1171,11 @@ public class AwaitSignalExample {
 
 进行线程编排，控制一系列线程的执行顺序并加以利用
 
+和Future相比它存在一个非常重要的优化，那就是采用了完全的non-blocking模式。Future在等待IO的时候会阻塞当前线程，但是CompletableFuture不会，采用Reactive的方式来进行
+
 CompletableFuture同时实现了两个接口，分别为Future和CompletionStage，CompletionStage是CompletableFuture提供的一些非常丰富的接口，可以借助这些接口来实现非常复杂的异步计算工作
+
+在CompletableFuture中，如果没有显示指定的Executor的参数，则会**调用默认的ForkJoinPool.commonPool( )**
 
 ```java
     public T get() throws InterruptedException, ExecutionException {
@@ -1182,15 +1186,20 @@ CompletableFuture同时实现了两个接口，分别为Future和CompletionStage
 
 
 
+##### **Threads Choreography 线程编排**
 
+每个CF任务会生成一个Completion对象，这些对象一起通过链表的方式进行关联管理
 
 后续的Completion结点返回的CompletableFuture, 将拥有的stack里面的所有结点都压入了当前CompletableFuture的stack里面，重新构成了一个链表结构，后续也按照前面的逻辑操作，如此反复，便会遍历完所有的CompletableFuture, 这些CompletableFuture(叶子结点)的stack为空，也是结束条件。
-
-
 
 <img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230313100055225.png" alt="image-20230313100055225" style="zoom:33%;" />
 
 ```java
+// the field in CF —— stack 
+volatile Completion stack;    // Top of Treiber stack of dependent actions
+
+
+// Completion Class
 abstract static class Completion extends ForkJoinTask<Void> implements Runnable, AsynchronousCompletionTask {
         volatile Completion next; // 无锁并发栈
 
@@ -1222,9 +1231,9 @@ abstract static class Completion extends ForkJoinTask<Void> implements Runnable,
 
 
 
-- Concurrent包中的Future在获取结果时会发生阻塞，而CompletableFuture则不会，它可以通过触发异步方法来获取结果
+##### The APIs 
 
-- 在CompletableFuture中，如果没有显示指定的Executor的参数，则会调用默认的ForkJoinPool.commonPool()
+
 
 
 
