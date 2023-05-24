@@ -62,12 +62,6 @@ BCNF Boyce-Codd：
 
 
 
-
-
-
-
-
-
 ## 2. 存储引擎
 
 引擎是相对于表来说的（表处理器）一个表能指定一种引擎
@@ -530,7 +524,7 @@ fori=1000 大表
 
 1 LEFT JOIN 左连接，左边为驱动表，右边为被驱动表.
 
-2 RIGHT JOIN 右连接，右边为驱动表，左边为被驱动表.
+2 RIGHT JOIN 右连接，右边为驱动表，左 表.
 
 3 INNER JOIN 内连接，mysql会选择数据量比较小的表作为驱动表，大表作为被驱动表.
 
@@ -1942,6 +1936,60 @@ LIMIT
 <img src="https://www.runoob.com/wp-content/uploads/2019/01/sql-join.png" alt="img" style="zoom:50%;" />
 
 99版语法中JOIN的七种操作方式
+
+
+
+##### 笛卡尔积错误
+
+
+
+##### 等值连接VS非等值连接
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230501214858040.png" alt="image-20230501214858040" style="zoom:33%;" />
+
+
+
+##### 内连接VS外连接
+
+现在假设A、B两张表做连接，A表中有一条记录在B表中是不存在的（其关联字段的值为NULL），B中也有记录是A中不存在的
+
+内连接返回AB列表中ON条件后存在关联的全部字段 JOIN / INNER JOIN
+
+左外连接返回A表中的全部字段，包括与B不存在关联的 LEFT JOIN / LEFT OUTER JOIN
+
+右外连接返回B表中的全部字段，包括与A不存在关联的 RIGHT JOIN / RIGHT OUTER JOIN
+
+满外连接相当于是内连接、左右外连接加一起后去重 FULL OUTER JOIN
+
+
+
+##### 自连接VS非自连接
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230501232711306.png" alt="image-20230501232711306" style="zoom:33%;" />
+
+
+
+##### 小表驱动大表
+
+
+
+##### cases
+
+连多张表
+
+![image-20230502173601562](https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230502173601562.png)
+
+
+
+自连接
+
+![image-20230502175435143](https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230502175435143.png)
+
+
+
+外连接只取差值
+
+![image-20230502180050206](https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230502180050206.png)
 
 
 
