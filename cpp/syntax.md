@@ -1,6 +1,6 @@
 
 
-## 基本语法 Basic Syntax
+## Fundamentals
 
 
 
@@ -143,10 +143,6 @@ void foo()
 
 
 
-#### Dynamic Memory
-
-
-
 #### Template 模板
 
 就是面向对象中的“泛型”概念，这方面的东西很多，如果要进一步深入C++的话这部分的东西是必须清楚了解的
@@ -199,9 +195,138 @@ vtclass<float, bool> vtinstance3;
 
 
 
+#### Data Type
+
+int
+
+char
+
+bool
+
+##### `float`
+
+##### `double`
+
+单精度在小数点后有7位有效数字，而双精度有15位
+
+单精度是4byte，双精度是8byte，需要额外一个bit来存储小数点位置和额外一个bit来存储正负值
 
 
-#### Pointers
+
+
+
+### Expressions
+
+
+
+
+
+#### i++与++i
+
+从左往右来看这个问题，i++表示在运用完i当前的值之后才会进行+1的操作
+
+而++i表示先将i的值+1再使用i进行对应的操作
+
+```cpp
+int i = 0;
+int j = 0;
+printf(i++); // output 0
+printf(++j); // output 1
+```
+
+
+
+#### Functions Def
+
+在CPP中所独有的函数声明方式
+
+
+
+##### **`constexpr`**
+
+指示函数的返回值是常量值，可以在编译时进行计算
+
+```cpp
+constexpr float exp(float x, int n)
+{
+    return n == 0 ? 1 :
+        n % 2 == 0 ? exp(x * x, n / 2) :
+        exp(x * x, (n - 1) / 2) * x;
+};
+```
+
+
+
+##### **`inline`**
+
+指示编译器将对函数的每个调用替换为函数代码本身。 在某个函数快速执行并且在性能关键代码段中重复调用的情况下，内联可以帮助提高性能
+
+```cpp
+inline double Account::GetBalance()
+{
+    return balance;
+}
+```
+
+
+
+##### **`noexcept`** 
+
+指定函数是否可以引发异常。 在以下示例中，如果 `is_pod` 表达式的计算结果 **`true`**为 ，函数不会引发异常。它是C++中函数的**“后缀”**签名，十分类似于Java中的throws Exception，但是C++中的noexcept可以根据一个constexpr的计算逻辑来最终确定是否允许抛出异常  
+
+```cpp
+#include <type_traits>
+
+template <typename T>
+T copy_object(T& obj) noexcept(std::is_pod<T>) {...}
+```
+
+
+
+##### `外部（cpp文件级别）函数调用`
+
+```cpp
+// C++上机作业.cpp : 定义控制台应用程序的入口点。
+//'0-9': 48-57
+ 
+#include "stdafx.h"
+using namespace std;
+extern void gotoxy(short x, short y); // 这样声明本文件以外的函数
+extern void sort_by_name();
+extern int Strtoint();
+ 
+int main()
+{
+	system("title 功能主函数");
+	gotoxy(23, 2); cout << "功能列表";
+	gotoxy(15, 3); cout << "1:字符串转换为数值类型";
+	gotoxy(15, 4); cout << "2:对中文字符进行排序";
+ 
+    return 0;
+}
+```
+
+
+
+#### Exception Handling
+
+##### `C++中内置异常一览图`
+
+<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230516162113678.png" alt="image-20230516162113678" style="zoom: 33%;" />
+
+##### **`C++异常处理实践`**
+
+
+
+
+
+
+
+### Pointers
+
+> C++的指针
+
+
 
 <img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230518113117051.png" alt="image-20230518113117051" style="zoom:50%;" />
 
@@ -280,7 +405,7 @@ void关键字与指针
 
 
 
-##### 函数指针（辨析其与指针函数的关系）s
+##### 函数指针（辨析其与指针函数的关系）
 
 意义在于可以在通用函数中通过参数的方式传入个性函数，实现通用函数的具体化
 
@@ -294,130 +419,15 @@ void关键字与指针
 
 
 
-#### Data Type
 
-##### `float`
 
-##### `double`
-
-单精度在小数点后有7位有效数字，而双精度有15位
-
-单精度是4byte，双精度是8byte，需要额外一个bit来存储小数点位置和额外一个bit来存储正负值
+#### 
 
 
 
+## Deep Down C++
 
-
-### Expressions
-
-
-
-
-
-#### i++与++i
-
-从左往右来看这个问题，i++表示在运用完i当前的值之后才会进行+1的操作
-
-而++i表示先将i的值+1再使用i进行对应的操作
-
-```cpp
-int i = 0;
-int j = 0;
-printf(i++); // output 0
-printf(++j); // output 1
-```
-
-
-
-#### Functions (Methods)
-
-在CPP中所独有的函数声明方式
-
-
-
-##### **`constexpr`**
-
-指示函数的返回值是常量值，可以在编译时进行计算
-
-```cpp
-constexpr float exp(float x, int n)
-{
-    return n == 0 ? 1 :
-        n % 2 == 0 ? exp(x * x, n / 2) :
-        exp(x * x, (n - 1) / 2) * x;
-};
-```
-
-
-
-##### **`inline`**
-
-指示编译器将对函数的每个调用替换为函数代码本身。 在某个函数快速执行并且在性能关键代码段中重复调用的情况下，内联可以帮助提高性能
-
-```cpp
-inline double Account::GetBalance()
-{
-    return balance;
-}
-```
-
-
-
-##### **`noexcept`** 
-
-指定函数是否可以引发异常。 在以下示例中，如果 `is_pod` 表达式的计算结果 **`true`**为 ，函数不会引发异常。它是C++中函数的**“后缀”**签名，十分类似于Java中的throws Exception，但是C++中的noexcept可以根据一个constexpr的计算逻辑来最终确定是否允许抛出异常  
-
-```cpp
-#include <type_traits>
-
-template <typename T>
-T copy_object(T& obj) noexcept(std::is_pod<T>) {...}
-```
-
-
-
-
-
-##### `外部（cpp文件级别）函数调用`
-
-```cpp
-// C++上机作业.cpp : 定义控制台应用程序的入口点。
-//'0-9': 48-57
- 
-#include "stdafx.h"
-using namespace std;
-extern void gotoxy(short x, short y); // 这样声明本文件以外的函数
-extern void sort_by_name();
-extern int Strtoint();
- 
-int main()
-{
-	system("title 功能主函数");
-	gotoxy(23, 2); cout << "功能列表";
-	gotoxy(15, 3); cout << "1:字符串转换为数值类型";
-	gotoxy(15, 4); cout << "2:对中文字符进行排序";
- 
-    return 0;
-}
-```
-
-
-
-#### Exception Handling
-
-##### `C++中内置异常一览图`
-
-<img src="https://hansomehu-picgo.oss-cn-hangzhou.aliyuncs.com/typora/image-20230516162113678.png" alt="image-20230516162113678" style="zoom: 33%;" />
-
-
-
-
-
-
-
-## Deep Down 深入C++
-
-<!--这一章主要是编程中用不到的偏C++底层/计算机硬件的知识-->
+> 这一章主要是编程中用不到的偏C++底层/计算机硬件的知识
 
 
 
